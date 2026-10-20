@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PuTTY URL handler test</title>
+<style>
+  body { font: 15px/1.65 system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; }
+  code { background: #f3f3f3; padding: .1em .35em; border-radius: 3px; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .35rem 1rem .35rem 0; vertical-align: top; border-bottom: 1px solid #eee; }
+  th { font-weight: 600; }
+  .bad a { color: #a00; }
+  .note { background: #f6f8fa; border-left: 3px solid #999; padding: .6rem 1rem; }
+</style>
+
+<h1>PuTTY URL handler test</h1>
+
+<p class="note">Key authentication comes from your <strong>saved PuTTY sessions</strong>. The handler
+matches the host in the URL against them and launches <code>-load &lt;session&gt;</code>, so the
+session's key, username and port all apply. No change to your server is needed &mdash; the
+<code>ssh://&lt;host&gt;</code> links the monitor page already emits match on their own.</p>
+
+<h2>1. Should load a saved session (key auth, no password prompt)</h2>
+<table>
+  <tr><th>Link</th><th>Matches</th><th>PuTTY gets</th></tr>
+  <tr><td><a href="ssh://iotdata-rem-b827eb20b3d4.local">ssh://iotdata-rem-b827eb20b3d4.local</a></td>
+      <td>HostName</td><td><code>-load "iotdata-rem-b827eb20b3d4"</code></td></tr>
+  <tr><td><a href="ssh://iotgate.local">ssh://iotgate.local</a></td>
+      <td>HostName</td><td><code>-load "iotgate"</code></td></tr>
+  <tr><td><a href="ssh://iotdata-master.local">ssh://iotdata-master.local</a></td>
+      <td>HostName</td><td><code>-load "iotdata-master"</code></td></tr>
+  <tr><td><a href="putty://iotgate">putty://iotgate</a></td>
+      <td>session name</td><td><code>-load "iotgate"</code></td></tr>
+  <tr><td><a href="putty://bastu">putty://bastu</a></td>
+      <td>session name</td><td><code>-load "bastu"</code></td></tr>
+  <tr><td><a href="ssh://192.168.75.129">ssh://192.168.75.129</a></td>
+      <td>HostName</td><td><code>-load "__local__"</code></td></tr>
+</table>
+
+<h2>2. Several sessions on one host, told apart by port</h2>
+<p>All six <code>branna.net</code> sessions share a hostname and differ only by port.</p>
+<table>
+  <tr><th>Link</th><th>PuTTY gets</th></tr>
+  <tr><td><a href="ssh://branna.net:8893">ssh://branna.net:8893</a></td><td><code>-load "branna-iotgate"</code></td></tr>
+  <tr><td><a href="ssh://branna.net:9091">ssh://branna.net:9091</a></td><td><code>-load "branna-bastu"</code></td></tr>
+  <tr><td><a href="ssh://branna.net:8890">ssh://branna.net:8890</a></td><td><code>-load "branna-badtuna"</code></td></tr>
+  <tr><td><a href="ssh://branna.net:9988">ssh://branna.net:9988</a></td><td><code>-load "branna-workshop"</code></td></tr>
+  <tr><td><a href="ssh://branna.net">ssh://branna.net</a></td>
+      <td>no port given, so the first host match wins &mdash; <code>-load "branna-adsb"</code>.
+          Ambiguous by nature; link the port if you care which.</td></tr>
+</table>
+
+<h2>3. Overrides still work on top of a session</h2>
+<table>
+  <tr><th>Link</th><th>PuTTY gets</th></tr>
+  <tr><td><a href="ssh://matt@iotgate.local">ssh://matt@iotgate.local</a></td>
+      <td><code>-load "iotgate" -l "matt"</code> &mdash; session's key, different user</td></tr>
+  <tr><td><a href="ssh://iotgate.local:2222">ssh://iotgate.local:2222</a></td>
+      <td><code>-load "iotgate" -P "2222"</code></td></tr>
+</table>
+
+<h2>4. No saved session &mdash; plain connection, expect a login prompt</h2>
+<ul>
+  <li><a href="ssh://unknown-host.example.com">ssh://unknown-host.example.com</a> &rarr; <code>-ssh "unknown-host.example.com"</code></li>
+  <li><a href="ssh://root@unknown.example.com:2222">ssh://root@unknown.example.com:2222</a> &rarr; <code>-ssh -l "root" -P "2222" "unknown.example.com"</code></li>
+</ul>
+
+<h2>5. Hostile input &mdash; must be refused, not run</h2>
+<ul class="bad">
+  <li><a href="ssh://-pw%20hunter2">ssh://-pw hunter2</a> &mdash; smuggled PuTTY switch</li>
+  <li><a href="ssh://host%3B%20calc.exe">ssh://host; calc.exe</a> &mdash; shell metacharacters</li>
+  <li><a href="ssh://127.0.0.1:99999">ssh://127.0.0.1:99999</a> &mdash; port out of range</li>
+  <li><a href="ssh://">ssh://</a> &mdash; no host</li>
+</ul>
+
+<h2>6. Other protocols</h2>
+<ul>
+  <li><a href="telnet://iotgate.local:23">telnet://iotgate.local:23</a> &mdash; <code>-telnet</code></li>
+  <li><a href="rlogin://vader.local">rlogin://vader.local</a> &mdash; <code>-rlogin</code></li>
+</ul>
